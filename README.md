@@ -4,9 +4,9 @@ Nesse repositório vocês encontrarão as minhas soluções para as questões pr
 
 ## Questão 1
 
-Resolvida parcialmente como pedido.
+Resolvida parcialmente como pedido. :warning:
 
-Ainda falta trazer a URL da imagem e
+Ainda falta trazer a URL da imagem
 
 ## Questão 2
 
@@ -28,7 +28,7 @@ Para que essa implementação se tornasse funcional, no entando, foi necessário
 
 ## Questão 3
 
-Em andamento...
+Em andamento... :x:
 
 ## Questão 4
 
