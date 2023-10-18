@@ -1,10 +1,14 @@
 # case-cotefacil
+
 Nesse repositório vocês encontrarão as minhas soluções para as questões propostas no case da Cote Fácil.
 
 ## Questão 1
 
+Em andamento...
+
 ## Questão 2
-A questão 2 foi resolvida exatamente como pedido. 
+
+Resolvida exatamente como pedido.
 
 Basta buildar a imagem a partir do diretório em que se encontra o Dockerfile, com o seguindo comando:
 
@@ -22,7 +26,13 @@ Para que essa implementação se tornasse funcional, no entando, foi necessário
 
 ## Questão 3
 
+Em andamento...
+
 ## Questão 4
+
+Resolvida exatamente como pedido. :heavy_check_mark:
+
+As informações extraidas do arquivo via FTP estão no arquivo de texto Questao4.txt
 
 ## Questão 5
 
