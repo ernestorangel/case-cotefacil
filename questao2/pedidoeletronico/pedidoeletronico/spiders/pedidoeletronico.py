@@ -1,16 +1,15 @@
 import scrapy
 from scrapy.http import Request
 import json
-import sys
-
-
-order_input = str(sys.argv[2])
-
-#order_input = '511082'
 
 class PedidoEletronicoSpider(scrapy.Spider):
   
   name = 'pedidoeletronico'
+  
+  def __init__(self, order='', **kwargs):
+    # super(PedidoEletronicoSpider, self).__init__(*args, **kwargs)
+    self.arg_value = order
+    super().__init__(**kwargs)
   
   def start_requests(self):
 
@@ -144,9 +143,9 @@ class PedidoEletronicoSpider(scrapy.Spider):
       "accesstoken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2RpZ29Vc3VhcmlvIjoyMjg1MCwidG9rZW4iOiI4NGY4ZjJmMC02ZDQ2LTExZWUtYmVmYi1kYmE3YzdmZDQzYjgiLCJpYXQiOjE2OTc1ODYyMDEsImV4cCI6MTY5NzYyOTQwMSwiYXVkIjoiaHR0cDovL3NlcnZpbWVkLmNvbS5iciIsImlzcyI6IlNlcnZpbWVkIiwic3ViIjoic2VydmltZWRAU2VydmltZWQuY29tLmJyIn0.TA8IgZ_ZGdExd2zFRMKTeDx13DO5tpLzJtw_oBuTV0FtIo1am9Y65XA7uvcVtPlLKiwjWKWEQ077oT1UvsoVfg"
     }
 
-    body = f'{{"dataInicio":"","dataFim":"","filtro":"{order_input}","pagina":1,"registrosPorPagina":10,"codigoExterno":518565,"codigoUsuario":22850,"kindSeller":0,"users":[518565,267511]}}'
+    body = f'{{"dataInicio":"","dataFim":"","filtro":"{self.arg_value}","pagina":1,"registrosPorPagina":10,"codigoExterno":518565,"codigoUsuario":22850,"kindSeller":0,"users":[518565,267511]}}'
 
-    self.logger.info(f"Buscando o pedido {order_input}...")
+    self.logger.info(f"Buscando o pedido {self.arg_value}...")
     
     yield Request(
       url=url,
@@ -161,11 +160,11 @@ class PedidoEletronicoSpider(scrapy.Spider):
   def get_details(self, response):
     
     if response.status == 200:
-      self.logger.info(f"Pedido {order_input} encontrado com sucesso.")
+      self.logger.info(f"Pedido {self.arg_value} encontrado com sucesso.")
     else:
-      self.logger.warning(f"Falha ao encontrar o pedido {order_input}.")
+      self.logger.warning(f"Falha ao encontrar o pedido {self.arg_value}.")
 
-    url = f'https://peapi.servimed.com.br/api/Pedido/ObterTodasInformacoesPedidoPendentePorId/{order_input}'
+    url = f'https://peapi.servimed.com.br/api/Pedido/ObterTodasInformacoesPedidoPendentePorId/{self.arg_value}'
 
     headers = {
       "authority": "peapi.servimed.com.br",
@@ -193,7 +192,7 @@ class PedidoEletronicoSpider(scrapy.Spider):
       "accesstoken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2RpZ29Vc3VhcmlvIjoyMjg1MCwidG9rZW4iOiI4NGY4ZjJmMC02ZDQ2LTExZWUtYmVmYi1kYmE3YzdmZDQzYjgiLCJpYXQiOjE2OTc1ODYzMjYsImV4cCI6MTY5NzYyOTUyNiwiYXVkIjoiaHR0cDovL3NlcnZpbWVkLmNvbS5iciIsImlzcyI6IlNlcnZpbWVkIiwic3ViIjoic2VydmltZWRAU2VydmltZWQuY29tLmJyIn0.lv_pVOSnC85rw66MDC5DWmZMKU4zUK_yafGrKAK6O4Md_AgX6U7aox1dWYd_OM44zFOEIeWPgqWnfFqEK30HfA"
     }
     
-    self.logger.info(f"Buscando detalhes do pedido {order_input}...")
+    self.logger.info(f"Buscando detalhes do pedido {self.arg_value}...")
 
     yield Request(
       url=url,
@@ -207,9 +206,9 @@ class PedidoEletronicoSpider(scrapy.Spider):
   def scrape_info(self, response):
     
     if response.status == 200:
-      self.logger.info(f"Detalhes do pedido {order_input} encontrados com sucesso.")
+      self.logger.info(f"Detalhes do pedido {self.arg_value} encontrados com sucesso.")
     else:
-      self.logger.warning(f"Falha so buscar detalhes do pedido {order_input}.")
+      self.logger.warning(f"Falha so buscar detalhes do pedido {self.arg_value}.")
       
     json_response = json.loads(response.text)
     
@@ -221,11 +220,15 @@ class PedidoEletronicoSpider(scrapy.Spider):
         "quantidade_faturada": item["quantidadeFaturada"]
       })
       
-    self.logger.info(f"Retornando detalhes do pedido {order_input}")
+    self.logger.info(f"Retornando detalhes do pedido {self.arg_value}")
       
     yield {
       "motivo": str(json_response["rejeicao"]).strip(),
       "itens": itens
     }
+    
+if __name__ == "__main__":
+  scrapy_args = ['crawl', 'pedidoeletronico', '-a']
+  scrapy.cmdline.execute(scrapy_args)
 
     
