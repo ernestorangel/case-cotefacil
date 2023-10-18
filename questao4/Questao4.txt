@@ -1,7 +1,6 @@
 host: 52.200.142.116, 
 usuário: ctflteste, 
 senha: YdrTXPK#mcG7KUT#H@$P, 
+
 nome: Great Job.txt,
 conteúdo: Your server is not safe, try for new password ideas in next time.ldoebaot.h
-
-obs.: ao conectar também percebi a existência de uma pasta vazia junto ao arquivo mencionado acima
