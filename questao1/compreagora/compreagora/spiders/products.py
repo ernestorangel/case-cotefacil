@@ -1,8 +1,7 @@
 import scrapy
 from scrapy.http import FormRequest
 from scrapy.http import Request
-import nacl.encoding
-import nacl.hash
+from scrapy.utils.defer import deferred_to_future
 import json
 
 class ProductSpider(scrapy.Spider):
@@ -95,7 +94,7 @@ class ProductSpider(scrapy.Spider):
     url = 'https://www.compra-agora.com/'
     yield Request(url, callback=self.get_categories)
 
-  def get_categories(self, response):
+  async def get_categories(self, response):
     
     if response.status == 200:
       self.logger.info("Login realizado com sucesso.")
@@ -110,12 +109,11 @@ class ProductSpider(scrapy.Spider):
         'url': "/".join(category.css('a').attrib['href'].split('/')[-2:])
       })
     
-    print(categories)
-    
     self.logger.info("Buscando itens por categoria...")
     for category in categories:
-      #self.logger.info("Capturando produtos da categoria: " + category['name'])
-      print(category['url'])
+      
+      self.produtos = []
+      
       url = 'https://www.compra-agora.com/api/catalogproducts/' + category['url']
 
       headers = {
@@ -180,45 +178,110 @@ class ProductSpider(scrapy.Spider):
           "_ga_5LTWWHFGYX": "GS1.1.1697600374.9.1.1697603185.10.0.0"
       }
 
-      yield Request(
+      yield await deferred_to_future(self.crawler.engine.download(Request(
+        url=url,
+        method='GET',
+        dont_filter=True,
+        cookies=cookies,
+        headers=headers,
+        callback=self.get_image_url,
+      )))
+      
+      with open(f"{category['url'].split('/')[0]}.json", "w") as outfile:
+        json.dump(self.produtos, outfile)
+    
+  async def get_image_url(self, response):
+    
+    json_response = json.loads(response.text)
+  
+    for produto in json_response["produtos"]:
+      self.produtos = []
+      meta = {
+        "descricao": produto["Nome"],
+        "fabricante": produto["Marca"],
+      }
+    
+      url = f'https://www.compra-agora.com/api/productLookup/{produto["Codigo"]}'
+
+      headers = {
+          "authority": "www.compra-agora.com",
+          "accept": "*/*",
+          "accept-language": "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7",
+          "referer": f"{produto["Url"]}",
+          "sec-ch-ua": "\"Chromium\";v=\"118\", \"Google Chrome\";v=\"118\", \"Not=A?Brand\";v=\"99\"",
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": "\"Windows\"",
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "same-origin",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+          "x-requested-with": "XMLHttpRequest"
+      }
+
+      cookies = {
+          "_gcl_au": "1.1.789191038.1697070740",
+          "nav_id": "b063cba6-2b88-436d-be32-be3290e72350",
+          "_pm_id": "683501697070739814",
+          "legacy_p": "b063cba6-2b88-436d-be32-be3290e72350",
+          "chaordic_browserId": "b063cba6-2b88-436d-be32-be3290e72350",
+          "legacy_c": "b063cba6-2b88-436d-be32-be3290e72350",
+          "legacy_s": "b063cba6-2b88-436d-be32-be3290e72350",
+          "_fbp": "fb.1.1697070739995.1447552808",
+          "_vwo_uuid_v2": "D956078A43BC98D35F932A23DF4E86DEB|9f5f4302a626454412937f73ab72a833",
+          "_tt_enable_cookie": "1",
+          "_ttp": "QG5ODYf7MsrHXPWrh5NfW6gSTSz",
+          "_hjSessionUser_3232779": "eyJpZCI6IjZkYmE2NjhlLTAzZmUtNWI5My05Zjc3LTc2NGIyZDRlZjMyYiIsImNyZWF0ZWQiOjE2OTcwNzA3NDA5NzUsImV4aXN0aW5nIjp0cnVlfQ==",
+          "chaordic_anonymousUserId": "anon-b063cba6-2b88-436d-be32-be3290e72350",
+          "chaordic_testGroup": f"%7B%22experiment%22%3Anull%2C%22group%22%3Anull%2C%22testCode%22%3Anull%2C%22code%22%3Anull%2C%22session%22%3Anull%7D",
+          "usrfgpt": "045024450001201697465069",
+          "_gid": "GA1.2.1050502628.1697600374",
+          "PHPSESSID": "2j38v9fit7ca3q5q2in6bgh3jf",
+          "mp_374315cbd6a8184d0bcfdd0f2a579e0e_mixpanel": f"%7B%22distinct_id%22%3A%20113953%2C%22%24device_id%22%3A%20%2218b38cd7bd4a4ce1-01df8bc88dde6a-26031151-1fa400-18b38cd7bd4a4ce1%22%2C%22__mps%22%3A%20%7B%7D%2C%22__mpso%22%3A%20%7B%7D%2C%22__mpus%22%3A%20%7B%7D%2C%22__mpa%22%3A%20%7B%7D%2C%22__mpu%22%3A%20%7B%7D%2C%22__mpr%22%3A%20%5B%5D%2C%22__mpap%22%3A%20%5B%5D%2C%22%24user_id%22%3A%20113953%2C%22%24initial_referrer%22%3A%20%22https%3A%2F%2Fwww.compra-agora.com%2F%22%2C%22%24initial_referring_domain%22%3A%20%22www.compra-agora.com%22%7D",
+          "_pm_m": "s958eec6c6a98884ba00335dd60ae9ff82ed19111529281ffff5446949be27567",
+          "ccw": "2 3 39 94 147 235 558 595 606 760 798 800 831 837",
+          "CPL": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJpbmZyYWNvbW1lcmNlLmNvbS5iciIsInN1YiI6IkluZnJhY29tbWVyY2UiLCJhdWQiOiJjb21wcmEtYWdvcmEuY29tIiwiaWF0IjoxNjk3NjMwMDk4LCJkYXRhIjp7InVpZCI6IndPdmN1dzZDeFNsYlpOWHI3MDFQelE9PSJ9fQ.EAZpBU4fgHODxBrpOEJWVBWEv4jXH13VarTpmnwhNc_b2wxP-t36XOL3VOdhXPuDtuWKNTyRyFSWl1Um6yRBiVLe0hD1FBE3eFFVcSJ-znDyVgjHdbFKxHoN2P_aSvBznXQxqM69wOo3SOaxUkLTQQMKRO9dvcsxxxIdrl70wxFU74GKRhc_GY4WskzCaZRiOoGSqM7-rEPn0f6S6gVnbESmdm4Gxl-_aP1VqfV8sHMZP68esEbh6N7iOoFKhbLRMorYmWO2dnbUJH0KfZ8yg_cWL4pjT_dT5Wq86cdh6-u64pVhMAODEZNhGBZzL-09aNNV_h9SttSjiCDHosxhxg",
+          "shownModalAprovacaoVendedoresPendentes": "true",
+          "_gat_UA-77097824-7": "1",
+          "_pm_sid": "238701697630112952",
+          "tfpsi": "d124ea8b-12b0-47de-b5bf-6fae15fc8326",
+          "_dc_gtm_UA-77097824-7": "1",
+          "dicbo_fetch": "true",
+          "impulsesuite_session": "1697630114068-0.507563046056491",
+          "_hjIncludedInSessionSample_3232779": "1",
+          "_hjSession_3232779": "eyJpZCI6ImRjZjY0ZDBiLTVmYWEtNDdlZC1hODAzLTg1NDMwZjVlYjgwYiIsImNyZWF0ZWQiOjE2OTc2MzAxMTU1MDEsImluU2FtcGxlIjp0cnVlLCJzZXNzaW9uaXplckJldGFFbmFibGVkIjp0cnVlfQ==",
+          "_hjAbsoluteSessionInProgress": "0",
+          "chaordic_realUserId": "113953",
+          "lx_sales_channel": f"%5B%22unilever-fr-235%22%2C%22unilever-pc-147%22%2C%22unilever-fs-235%22%2C%22unilever-professionals-235%22%2C%22unilever-pi-147%22%2C%22gsk-pc-235%22%2C%22unilever-bw-147%22%2C%22unilever-hc-235%22%2C%22unilever-mtmgdb-235%22%2C%22kibon-ic-94%22%2C%22camil-fr-39%22%2C%22henkel-acc-595%22%2C%22diageo-bebidas-831%22%2C%22Selmi-Total-Todeschini-Biscoitos-39%22%2C%22Selmi-Todeschini-Biscoitos-39%22%2C%22Selmi-Biscoitos-800%22%2C%22Selmi-Total-Biscoitos-800%22%2C%22Faber-Castell-Papelaria-39%22%2C%22lactalis-fr-837%22%2C%22ontex-pc-3%22%2C%22condor-hc-760%22%2C%22condor-pc-760%22%2C%22jmacedo-fr-2%22%2C%22riclan-fr-760%22%2C%22ul-international-pc-3%22%2C%22sococo-fr-39%22%2C%22brf-fr-235%22%2C%22haribo-fr-39%22%2C%22predilecta-fr-837%22%2C%22piracanjuba-leites-fr-3%22%2C%22piracanjuba-queijos-fr-3%22%2C%22piracanjuba-kids-fr-3%22%2C%22piracanjuba-mercearia-fr-3%22%2C%22piracanjuba-especiais-fr-3%22%2C%22piracanjuba-farma-fr-3%22%2C%22predilecta-stella-d-oro-fr-837%22%2C%22predilecta-so-fruta-fr-837%22%2C%22predilecta-salsaretti-fr-837%22%2C%22predilecta-salatta-show-fr-837%22%2C%22predilecta-sacciali-fr-837%22%2C%22predilecta-predilecta-fr-837%22%2C%22predilecta-minas-mais-fr-837%22%2C%22predilecta-hops-fr-837%22%2C%22predilecta-etti-fr-837%22%2C%22predilecta-carpe-etiam-fr-837%22%2C%22predilecta-cajamar-fr-837%22%2C%22predilecta-budweiser-fr-837%22%2C%22predilecta-avellana-fr-837%22%2C%22predilecta-showcau-fr-837%22%2C%22predilecta-sao-joao-fr-837%22%2C%22linea-fr-39%22%2C%22jimo-hc-3%22%2C%22total-quimica-hc-798%22%2C%22josapar-fr-39%22%2C%22prime-hair-concept-pc-3%22%2C%22consigaz-gas-606%22%2C%22swedishmatch-pc-3%22%2C%22swedishmatch-hc-3%22%2C%22swedishmatch-bazar-3%22%2C%22poly-play-bazar-3%22%2C%22poly-play-hc-3%22%2C%22chock-fr-3%22%2C%22embelleze-pc-3%22%2C%22suavipan-fr-3%22%2C%22genomma-lab-pc-3%22%2C%22coty-pc-3%22%2C%22ontex-dvl-3%22%2C%22camil-biscoitos-39%22%2C%22tok-bothanico-pc-3%22%5D",
+          "voxusmediamanager_id": "16834988756160.2898742213548291uke55wl1kxr",
+          "voxusmediamanager__ip": "186.222.69.243",
+          "aceite_politicas_cookie": "2023-10-18%2008:55:22",
+          "_uetsid": "f45401606d6711ee9b8c752932a1881d",
+          "_uetvid": "cdd59b10689611eeb799b5ef9460e740",
+          "_ga": "GA1.1.1991479225.1697070740",
+          "_ga_5LTWWHFGYX": "GS1.1.1697630113.10.1.1697630155.18.0.0",
+          "cto_bundle": "j_ICEl9vY3cxRlNLVDdNekRTN3FwMXdJczJNSUppV01zMDQ2UkpRSEhOQXl0bERMJTJGTTZnUk1kMWE3WW1IQjdrdmRnR0V3dW5wVEpzaUpCN0pCZkplUFVIekMlMkJOWFlCcWVIRXMxazY1WU1WeHZwZm1Wa1BWRU1EWUY4clMxNmxqMlFwd1NrWDN1ZHhhc21SbThuMzdzdmRPTVNESHZpQ2x2Q0l0eEYxSmhiVm5uMjBIZlNaek9ZaXBqJTJGWVpuZmF0JTJCOHRCYzZMbHFScGV2ZFNuTUxSWXloMUlFSVZWNms4cktxUm9GbDdRTVFoOURkZXNUeUplUmxOYm1zVSUyRkNQbGhNeFhrOUd6RFI3YlRHRFpoZXAwNGRPMzI0RWclM0QlM0Q"
+      }
+
+      yield await deferred_to_future(self.crawler.engine.download(Request(
           url=url,
           method='GET',
           dont_filter=True,
           cookies=cookies,
           headers=headers,
-          callback=self.start_scraping,
-          meta={'url': category['url'].split('/')[0]}
-      )
-      #yield Request(category['url'], callback=self.start_scraping)
-
-
-  def start_scraping(self, response):
+          callback=self.next_part,
+          meta=meta
+      )))
+    
+  def next_part(self, response):
     
     json_response = json.loads(response.text)
-  
-  #   for produto in json_response["produtos"]:
-  #     meta = {
-  #       "descricao": produto["Nome"],
-  #       "fabricante": produto["Marca"],
-  #     }
-  #     yield Request(produto["Url"], callback=self.get_image_url, meta=meta)
+    image_url = ''
     
-  # def get_image_url(self, response):
+    if (len(json_response) > 0):
+      image_url = json_response[0]["skus"]["images"]["gm"][0]
     
-  #   self.produtos.append({
-  #     "descricao": response.meta.get("descricao"),
-  #     "fabricante": response.meta.get("fabricante"),
-  #     "image_url": response.css('elevateImg').attrib('src')
-  #   })
-
-    with open(f"{response.meta.get('url')}.json", "w") as outfile:
-      json.dump(json_response, outfile)
-
-  #   next_page_button = response.css('button#btnCarregarMais').get()
-  #   if next_page_button is not None:
-  #     previous_url = response.request.url
-  #     auxList = previous_url.split('=')
-  #     # next_url = auxList[0] + '=' + int(auxList[1] + 1)
-  #     auxList[1] = str(int(auxList[1]) + 1)
-  #     next_url = '='.join(auxList)
-  #     yield response.follow(next_url, callback=self.start_scraping)
+    self.produtos.append({
+      "descricao": response.meta.get("descricao"),
+      "fabricante": response.meta.get("fabricante"),
+      "image_url": image_url
+    })
