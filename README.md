@@ -4,9 +4,9 @@ Nesse repositório vocês encontrarão as minhas soluções para as questões pr
 
 ## Questão 1
 
-Resolvida parcialmente. :warning:
+Resolvida parcialmente como pedido. :warning:
 
-Ainda falta trazer a URL da imagem.
+Ao invés de trazer as informações no terminal, faz o output de um arquivo json com os arquivos capturados separados por categoria.
 
 ## Questão 2
 

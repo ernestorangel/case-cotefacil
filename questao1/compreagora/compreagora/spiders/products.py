@@ -1,13 +1,24 @@
 import scrapy
 from scrapy.http import FormRequest
 from scrapy.http import Request
-from scrapy.utils.defer import deferred_to_future
+from scrapy import signals
+#from scrapy.utils.defer import deferred_to_future
 import json
 
 class ProductSpider(scrapy.Spider):
   name = 'products'
   
-  produtos = []
+  produtos = {}
+  
+  @classmethod
+  def from_crawler(cls, crawler, *args, **kwargs):
+    spider = super(ProductSpider, cls).from_crawler(crawler, *args, **kwargs)
+    crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
+    return spider
+
+  def spider_closed(self, spider):
+    with open("products.json", "w") as outfile:
+      json.dump([self.produtos], outfile)
 
   def start_requests(self):
 
@@ -112,8 +123,6 @@ class ProductSpider(scrapy.Spider):
     self.logger.info("Buscando itens por categoria...")
     for category in categories:
       
-      self.produtos = []
-      
       url = 'https://www.compra-agora.com/api/catalogproducts/' + category['url']
 
       headers = {
@@ -121,7 +130,7 @@ class ProductSpider(scrapy.Spider):
           "accept": "application/json, text/plain, */*",
           "accept-language": "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7",
           "newrelic": "eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjMwOTcxNjciLCJhcCI6IjExMzQxOTY2MDciLCJpZCI6ImQ5NzA3YjgzYTJkMmEwOGUiLCJ0ciI6IjE5NTA4NTQwNjEyNWIxY2ZhNTA1ZDc0Y2FhNWZkYTVjIiwidGkiOjE2OTc2MDMxODY3NTJ9fQ==",
-          "referer": "https://www.compra-agora.com/loja/bebidas/778",
+          "referer": f"https://www.compra-agora.com/loja/{category['url']}",
           "sec-ch-ua": "\"Chromium\";v=\"118\", \"Google Chrome\";v=\"118\", \"Not=A?Brand\";v=\"99\"",
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": "\"Windows\"",
@@ -178,27 +187,32 @@ class ProductSpider(scrapy.Spider):
           "_ga_5LTWWHFGYX": "GS1.1.1697600374.9.1.1697603185.10.0.0"
       }
 
-      yield await deferred_to_future(self.crawler.engine.download(Request(
+      category = f"{category['url'].split('/')[0]}"
+      
+      meta={"category": category}
+      
+      self.produtos[category] = []
+      
+      yield Request(
         url=url,
         method='GET',
         dont_filter=True,
         cookies=cookies,
         headers=headers,
         callback=self.get_image_url,
-      )))
-      
-      with open(f"{category['url'].split('/')[0]}.json", "w") as outfile:
-        json.dump(self.produtos, outfile)
+        meta=meta
+      )
     
   async def get_image_url(self, response):
     
     json_response = json.loads(response.text)
   
     for produto in json_response["produtos"]:
-      self.produtos = []
+      
       meta = {
         "descricao": produto["Nome"],
         "fabricante": produto["Marca"],
+        "category": response.meta.get('category')
       }
     
       url = f'https://www.compra-agora.com/api/productLookup/{produto["Codigo"]}'
@@ -262,7 +276,7 @@ class ProductSpider(scrapy.Spider):
           "cto_bundle": "j_ICEl9vY3cxRlNLVDdNekRTN3FwMXdJczJNSUppV01zMDQ2UkpRSEhOQXl0bERMJTJGTTZnUk1kMWE3WW1IQjdrdmRnR0V3dW5wVEpzaUpCN0pCZkplUFVIekMlMkJOWFlCcWVIRXMxazY1WU1WeHZwZm1Wa1BWRU1EWUY4clMxNmxqMlFwd1NrWDN1ZHhhc21SbThuMzdzdmRPTVNESHZpQ2x2Q0l0eEYxSmhiVm5uMjBIZlNaek9ZaXBqJTJGWVpuZmF0JTJCOHRCYzZMbHFScGV2ZFNuTUxSWXloMUlFSVZWNms4cktxUm9GbDdRTVFoOURkZXNUeUplUmxOYm1zVSUyRkNQbGhNeFhrOUd6RFI3YlRHRFpoZXAwNGRPMzI0RWclM0QlM0Q"
       }
 
-      yield await deferred_to_future(self.crawler.engine.download(Request(
+      yield Request(
           url=url,
           method='GET',
           dont_filter=True,
@@ -270,7 +284,7 @@ class ProductSpider(scrapy.Spider):
           headers=headers,
           callback=self.next_part,
           meta=meta
-      )))
+      )
     
   def next_part(self, response):
     
@@ -279,9 +293,12 @@ class ProductSpider(scrapy.Spider):
     
     if (len(json_response) > 0):
       image_url = json_response[0]["skus"]["images"]["gm"][0]
-    
-    self.produtos.append({
+      
+    product_info = {
       "descricao": response.meta.get("descricao"),
       "fabricante": response.meta.get("fabricante"),
       "image_url": image_url
-    })
+    }
+    
+    self.produtos[f'{response.meta.get('category')}'].append(product_info)
+    yield product_info
