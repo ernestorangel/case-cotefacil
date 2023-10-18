@@ -8,7 +8,7 @@ Em andamento...
 
 ## Questão 2
 
-Resolvida exatamente como pedido.
+Resolvida exatamente como pedido. :heavy_check_mark:
 
 Basta buildar a imagem a partir do diretório em que se encontra o Dockerfile, com o seguindo comando:
 
@@ -36,6 +36,14 @@ As informações extraidas do arquivo via FTP estão no arquivo de texto Questao
 
 ## Questão 5
 
+Resolvida exatamente como pedido. :heavy_check_mark:
+
 ## Questão 6
 
+Resolvida exatamente como pedido. :heavy_check_mark:
+
+Acabou subindo até um exemplo do arquivo .json que sai no output.
+
 ## Questão 7
+
+Resolvida exatamente como pedido. :heavy_check_mark:
