@@ -4,7 +4,9 @@ Nesse repositório vocês encontrarão as minhas soluções para as questões pr
 
 ## Questão 1
 
-Em andamento...
+Resolvida parcialmente como pedido.
+
+Ainda falta trazer a URL da imagem e
 
 ## Questão 2
 

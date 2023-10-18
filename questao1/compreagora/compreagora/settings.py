@@ -94,6 +94,6 @@ FEED_EXPORT_ENCODING = "utf-8"
 
 #LOG_LEVEL = 'INFO'
 
-FEEDS = {
-  'products.json': {'format': 'json', 'overwrite': True}
-}
+# FEEDS = {
+#   'products.json': {'format': 'json', 'overwrite': True}
+# }
